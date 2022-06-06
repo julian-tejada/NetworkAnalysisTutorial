@@ -1,0 +1,284 @@
+---
+title: "Análise de redes em psicometria, um estudo de caso"
+author: "Julian Tejada"
+date: "06/06/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Carregamento das bibliotecas
+
+O R é um software de código aberto desenvolvido por uma comunidade de programadores/acadêmicos que disponibiliza seus projetos no formato de bibliotecas (libraries) que devem ser instaladas e carregadas para sua utilização. Mas ao usar a combinação de R + RStudio, o processo de carregamento já envolve o processo de instalação, e cada vez que o RStudio detecte que uma nova biblioteca precisa ser carregada, ele apresentará uma mensagem perguntando se você quer instá-la. 
+
+![install package](images/InstallPackagesRStudio.png)
+
+```{r eval = FALSE}
+library(readr)
+Dados <- read_csv('Dados_v1.csv')
+
+```
+
+
+
+# Carregamento de arquivos no R
+
+O primeiro comando que iremos usar é para indicar ao R onde está o arquivo com os dados
+
+```{r eval = FALSE}
+setwd('C:/...')
+```
+
+Uma vez configurado a pasta de trabalho, podemos carregar os dados
+
+```{r eval = FALSE}
+library(readr)
+Dados <- read_csv('Dados_v1.csv')
+
+```
+
+
+# Estatística descriptica no R
+
+O comando summary gera um resumo com as variáveis 
+```{r eval = FALSE}
+summary(Dados)
+```
+
+### Histogramas
+
+Para criar um histograma basta usar os seguintes comandos, onde <span style="color: red;">x</span>, define o nome da variável (coluna dentro do dataframe) que será plotada, e <span style="color: red;">facet_wrap</span> o nome da variável de agrupação
+
+
+```{r eval = FALSE}
+library(ggplot2)
+Dados %>%
+  ggplot() +
+  geom_histogram(mapping = aes(x=Variacao)) + 
+  facet_wrap(~Grupos) +
+  xlab("Variação Outubro - Dezembro") +
+  ylab("Frequência")
+
+```
+
+Outro exemplo de histograma com uma variável com distribuição normal
+
+```{r eval = FALSE}
+
+Dados %>%
+  ggplot() +
+  geom_histogram(mapping = aes(x=Deducao)) + 
+  facet_wrap(~Grupos) +
+  xlab("Valor deducido") +
+  ylab("Frequência")
+
+```
+
+### Teste de normalidade
+
+Teste de normalidade de uma variável COM distribuição normal
+
+
+```{r eval = FALSE}
+ggqqplot(Dados$Deducao)
+
+```
+Teste de normalidade de uma variável SEM distribuição normal
+
+
+```{r eval = FALSE}
+ggqqplot(Dados$Variacao)
+
+```
+
+### Diagramas de caixas
+
+Para criar um diagrama de caixa que apresente a mediana e o intervalo interquartil usamos os seguintes comandos, onde <span style="color: red;">x</span>, define o nome da VI, <span style="color: red;">y</span> o nome da variável dependente, <span style="color: red;">geom_jitter</span> coloca cada valor observado como um ponto,  e <span style="color: red;">outlier.shape</span> coloca um X para indicar a partir de qual valor os pontos observados podem ser considerados "ourliers". 
+
+
+```{r eval = FALSE}
+Dados %>%
+  ggplot(aes(x=Grupos, y=Variacao)) + 
+  geom_boxplot(outlier.shape = 4) + 
+  geom_jitter(width = 0.2, alpha=0.2) +
+  ylab("Variação dezembro - outubro") +
+  xlab("Grupo")
+```
+
+### Figura de barras
+
+Para criar uma figura de barras usando a média e o erro padrão usamos os seguintes comandos, onde <span style="color: red;">x</span>, define o nome da VI, <span style="color: red;">y</span> o nome da variável dependente, <span style="color: red;">stat_summary(fun=mean</span> define o parâmetro que será usado para configurar a altura das barras, <span style="color: red;">stat_summary(fun.data=mean_se</span> define o parâmetro que será usado para configurar a altura das barras de erro, <span style="color: red;">width = 0.1</span>  define o comprimento das linhas horizontais nos extremos das barras de erro
+
+
+```{r eval = FALSE}
+
+Dados %>%
+  ggplot(aes(x=Grupos, y=Variacao)) + 
+  stat_summary(fun = mean, geom = "bar", position="dodge") + 
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.3) +   
+  ylab("Variação dezembro - outubro") +
+  xlab("Grupo") 
+```
+# Estatística inferencial
+
+
+
+
+
+### Comparação de dois grupos
+
+Para comparar dois grupos é preciso primeiro filtrar o data frame para ter unicamente dois grupos, para isso usaremos o comando filter para criar um novo dataframe com as informações dos grupos Controle e Simplificada
+```{r eval = FALSE}
+library(tidyverse)
+Dados2 <- Dados %>%
+  filter(Grupos == "Controle" | Grupos=="Simplificada")
+```
+
+Com o data frame já filtrado, usaremos o comando  <span style="color: red;">ggstatsplot::ggbetweenstats</span> para gerar simultaneamente uma figura com os dados descriptivos junto com os resultados inferenciais. Para isso configuramos o parâmetro <span style="color: red;">x</span> que define a VI, o parâmetro <span style="color: red;">y </span> que define a variável dependente, o parâmetro <span style="color: red;">plot.type </span> que define o tipo de figura, no caso um diagrama de caixas, e o parâmetro <span style="color: red;">type</span> que define o tipo de teste (paramétrico, não paramétrico ou robusto). 
+
+
+```{r eval = FALSE}
+library(ggstatsplot)
+ggstatsplot::ggbetweenstats(
+  data = Dados2,
+  x = Grupos,
+  y = Variacao,
+  xlab = "Grupo",
+  ylab = "Variação dezembro - outubro",
+  plot.type = "box",
+  type = "np",
+  conf.level = 0.99,
+  package = "ggsci",
+  palette = "nrc_npg",
+  bf.message = FALSE,
+  
+)
+```
+
+Agora filtremos os grupos Controle e Coercitiva
+```{r eval = FALSE}
+library(tidyverse)
+Dados3 <- Dados %>%
+  filter(Grupos == "Controle" | Grupos=="Coercitiva")
+```
+
+E novamente, podemos usar o memso comando para comparar esses dois grupos, só é preciso alterar o nome do <span style="color: red;">data</span> que ficará como <span style="color: red;">Dados3</span>
+
+
+```{r eval = FALSE}
+library(ggstatsplot)
+ggstatsplot::ggbetweenstats(
+  data = Dados3,
+  x = Grupos,
+  y = Variacao,
+  xlab = "Grupo",
+  ylab = "Variação dezembro - outubro",
+  plot.type = "box",
+  type = "np",
+  conf.level = 0.99,
+  package = "ggsci",
+  palette = "nrc_npg",
+  bf.message = FALSE,
+  
+)
+```
+
+
+### Comparação de mais de dois grupos
+
+No caso de uma comparação de mais de dois grupos (one-way anova), o primeiro que deve ser feito é um análise da normalidade dos dados, para o qual usamos a figura QQ gerada a partir dos resíduos 
+
+```{r eval = FALSE}
+model  <- lm(Variacao ~ Grupos,
+             data = Dados)
+ggqqplot(residuals(model))
+```
+Se os pontos acompanham a linha diagonal podemos supor que os dados têm distribuição normal e por tanto podemos usar um modelo paramétrico, do contrário, podemos usar o teste não paramétrico ou o robusto. O comando é o mesmo usado na comparação de dois grupos, mas desta vez usando o banco Dados, e as variáveis Grupos e MediaVariacao. 
+
+```{r eval = FALSE}
+ggstatsplot::ggbetweenstats(
+  data = Dados,
+  x = Grupos,
+  y = Variacao,
+  xlab = "Grupo",
+  ylab = "Variação dezembro - outubros",
+  plot.type = "box",
+  type = "np",
+  conf.level = 0.99,
+  package = "ggsci",
+  palette = "nrc_npg",
+  bf.message = FALSE,
+  
+)
+```
+
+
+Para converter várias colunas em uma diade VI-VD usamos o comando gather onde  <span style="color: red;">key</span> é o nome da VI, e  <span style="color: red;">value</span> é o nome da VD.
+
+```{r eval = FALSE}
+Dados4 <- Dados %>%
+  gather(key = "Grupo", value = "Atrasos",  AtrasoAgosto, AtrasoOutubro, AtrasoDezembro)
+
+```
+Com o novo dataframe é possível compara o número parecelas atrasadas nos três mesês
+
+```{r eval = FALSE}
+ggstatsplot::ggbetweenstats(
+  data = Dados4,
+  x = Grupo,
+  y = Atrasos,
+  xlab = "Mês",
+  ylab = "Número de parcelas atrasadas",
+  plot.type = "box",
+  type = "np",
+  conf.level = 0.99,
+  package = "ggsci",
+  palette = "nrc_npg",
+  bf.message = FALSE,
+  
+)
+```
+
+Também é possível analisar a tendência de atrasos ao interior de cada grupo usando o seguinte comando
+
+```{r eval = FALSE}
+grouped_ggbetweenstats(
+  data = Dados4,
+  x = Mes,
+  y = Atrasos,
+  grouping.var = Grupos,
+  xlab = "Mês",
+  ylab = "Número de parcelas atrasadas",
+  plot.type = "box",
+  type = "np",
+  conf.level = 0.99,
+  package = "ggsci",
+  palette = "nrc_npg",
+  bf.message = FALSE,
+  
+)
+```
+
+Finalmente, para ajustar a ordem na qual aparece cada barra seguindo a ordem cronológica e não alfabética, iremos usar os seguintes comandos:
+
+```{r eval = FALSE}
+Dados4$Mes <- as.factor(Dados4$Mes)
+Dados4$Mes <- ordered(Dados4$Mes , levels = c("AtrasoAgosto", "AtrasoOutubro", "AtrasoDezembro"))
+```
+
+
+----------------------------------
+Uma outra comparação que pode ser feita é usando variáveis categórias, como a variável chamada <span style="color: red;">RedizioAtraso</span> que codifica com as palavras "sim" e "não" se esse contribuinto reduzio seu atrado. Para isso usaremos um comando muito parecido no qual iremos colocar os nomes das variáves a serem comparadas: 
+
+```{r eval = FALSE}
+ggbarstats(
+  Dados,
+  x=ReduzioAtraso,
+  y=Grupos,
+  bf.message = FALSE,
+)  
+
+```
+
